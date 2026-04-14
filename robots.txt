@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://videosaver.vercel.app/sitemap-new.xml
