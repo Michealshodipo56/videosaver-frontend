@@ -5,6 +5,17 @@ const BACKEND_URL = backendAttr;
 let allOptions = [];
 let selectedKind = 'video';
 let selectedOption = null;
+let currentPlatform = '';
+
+function detectPlatform(url) {
+    url = url.toLowerCase();
+    if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube';
+    if (url.includes('instagram.com')) return 'instagram';
+    if (url.includes('facebook.com') || url.includes('fb.watch') || url.includes('fb.gg')) return 'facebook';
+    if (url.includes('tiktok.com')) return 'tiktok';
+    if (url.includes('twitter.com') || url.includes('x.com')) return 'x';
+    return null;
+}
 
 lucide.createIcons();
 
@@ -84,7 +95,7 @@ document.getElementById('mainDownloadBtn').onclick = () => {
         title: title,
         label: label
     };
-    const downloadUrl = `${BACKEND_URL}/api/youtube/download?` + new URLSearchParams(params).toString();
+    const downloadUrl = `${BACKEND_URL}/api/${currentPlatform}/download?` + new URLSearchParams(params).toString();
 
     const link = document.createElement('a');
     link.href = downloadUrl.toString();
@@ -106,7 +117,13 @@ document.getElementById('mainDownloadBtn').onclick = () => {
 async function handleFetchMetadata() {
     const url = urlInput.value.trim();
     if (!url) {
-        showToast('Paste a YouTube video link first');
+        showToast('Paste a video link first');
+        return;
+    }
+
+    currentPlatform = detectPlatform(url);
+    if (!currentPlatform) {
+        showToast('Unsupported URL format. Paste a valid link (YouTube, Insta, FB, X, TikTok).');
         return;
     }
 
@@ -121,7 +138,7 @@ async function handleFetchMetadata() {
     );
 
     try {
-        const response = await fetch(`${BACKEND_URL}/api/youtube/metadata?url=${encodeURIComponent(url)}`);
+        const response = await fetch(`${BACKEND_URL}/api/${currentPlatform}/metadata?url=${encodeURIComponent(url)}`);
 
         // Guard: check if response is JSON before parsing
         const contentType = response.headers.get('content-type') || '';
@@ -136,7 +153,7 @@ async function handleFetchMetadata() {
 
         const data = await response.json();
         if (!response.ok || data.error) {
-            throw new Error(data.error || 'Failed to inspect YouTube video');
+            throw new Error(data.error || 'Failed to inspect video');
         }
 
         populateVideoInfo(data);
@@ -153,8 +170,11 @@ function populateVideoInfo(data) {
     resultStatus.style.display = 'none';
     videoDetails.style.display = 'grid';
 
-    document.getElementById('videoTitle').textContent = data.title || 'Untitled YouTube Video';
-    document.getElementById('platformBadge').textContent = data.platform || 'YouTube';
+    document.getElementById('videoTitle').textContent = data.title || 'Untitled Video';
+    
+    // Capitalize platform name for badge
+    const badgeText = currentPlatform.charAt(0).toUpperCase() + currentPlatform.slice(1);
+    document.getElementById('platformBadge').textContent = data.platform || (badgeText === 'X' ? 'Twitter/X' : badgeText);
     document.getElementById('videoDuration').innerHTML = `<i data-lucide="clock"></i> Duration: ${data.duration || 'N/A'}`;
 
     const thumb = document.getElementById('thumbnail');
