@@ -1,6 +1,6 @@
-# Contributing to SaveMedia Frontend
+# Contributing to VideoSaver Frontend
 
-We love your input! We want to make contributing to SaveMedia as easy and transparent as possible, whether it's:
+We love your input! We want to make contributing to VideoSaver as easy and transparent as possible, whether it's:
 
 - Reporting a bug
 - Discussing the current state of the code
@@ -193,4 +193,4 @@ By contributing, you agree that your contributions will be licensed under the MI
 
 ---
 
-Thank you for contributing to SaveMedia! 🎉
+Thank you for contributing to VideoSaver! 🎉
