@@ -1,8 +1,8 @@
-# SaveMedia Frontend 🎥
+# VideoSaver Frontend 🎥
 
 A modern, responsive web application for downloading videos from multiple social media platforms including YouTube, Instagram, Facebook, TikTok, and X (Twitter).
 
-![SaveMedia Demo](https://img.shields.io/badge/Status-Live-brightgreen)
+![VideoSaver Demo](https://img.shields.io/badge/Status-Live-brightgreen)
 ![Version](https://img.shields.io/badge/Version-2.0-blue)
 ![Platform](https://img.shields.io/badge/Platform-Web-orange)
 
@@ -124,7 +124,7 @@ videosaver-frontend/
 ## 🔧 Configuration
 
 ### Backend Integration
-The frontend communicates with the SaveMedia backend API. Configure the backend URL in `index.html`:
+The frontend communicates with the VideoSaver backend API. Configure the backend URL in `index.html`:
 
 ```html
 <body data-backend-url="YOUR_BACKEND_URL">
@@ -286,7 +286,7 @@ netlify deploy --prod --dir .
 
 - **Issues**: [GitHub Issues](https://github.com/yourusername/videosaver-frontend/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/yourusername/videosaver-frontend/discussions)
-- **Email**: support@savemedia.example
+- **Email**: support@videosaver.example
 
 ## 🎉 Acknowledgments
 
@@ -299,7 +299,7 @@ netlify deploy --prod --dir .
 
 <div align="center">
 
-**Made with ❤️ by the SaveMedia Team**
+**Made with ❤️ by the VideoSaver Team**
 
 [Live Demo](https://videosaver-frontend.vercel.app) • [Backend API](https://github.com/yourusername/videosaver-backend) • [Report Bug](https://github.com/yourusername/videosaver-frontend/issues)
 
