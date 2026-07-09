@@ -79,7 +79,7 @@ window.addEventListener('click', () => {
     document.getElementById('qualityOptions').classList.remove('show-options');
 });
 
-document.getElementById('mainDownloadBtn').onclick = () => {
+document.getElementById('mainDownloadBtn').onclick = async () => {
     if (!selectedOption) {
         showToast('Select a format first');
         return;
@@ -88,6 +88,33 @@ document.getElementById('mainDownloadBtn').onclick = () => {
     const title = document.getElementById('videoTitle').textContent;
     const platform = document.getElementById('platformBadge').textContent;
     const label = document.querySelector('#qualitySelect .selected-value').textContent;
+
+    if (selectedOption.direct_url) {
+        const ext = selectedOption.ext || (selectedKind === 'audio' ? 'mp3' : 'mp4');
+        const safeTitle = title.replace(/[<>:"/\\|?*]+/g, '_').trim() || 'video';
+        const link = document.createElement('a');
+        link.href = selectedOption.direct_url;
+        link.setAttribute('download', `${safeTitle}.${ext}`);
+        link.target = '_blank';
+        link.rel = 'noopener';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        showToast('Download started');
+
+        addToHistory({
+            id: 'history_' + Date.now(),
+            title,
+            thumbnail: document.getElementById('thumbnail').src,
+            platform,
+            url: urlInput.value.trim(),
+            format: `${selectedOption.ext.toUpperCase()} ${label}`,
+            download_url: selectedOption.direct_url,
+            downloaded_at: new Date().toISOString()
+        });
+        return;
+    }
+
     const params = {
         url: urlInput.value.trim(),
         kind: selectedOption.kind,
@@ -160,6 +187,22 @@ async function handleFetchMetadata() {
         allOptions = data.options || [];
         setupSelects();
     } catch (error) {
+        if (currentPlatform === 'youtube') {
+            try {
+                const { fetchYouTubeMetadataInBrowser, isYouTubeBrowserFallbackEnabled } = await import('./youtube-browser.js');
+                if (isYouTubeBrowserFallbackEnabled()) {
+                    resultStatus.innerHTML = '<span>Server blocked — trying browser extraction...</span>';
+                    const data = await fetchYouTubeMetadataInBrowser(url);
+                    populateVideoInfo(data);
+                    allOptions = data.options || [];
+                    setupSelects();
+                    showToast('Loaded via browser extraction');
+                    return;
+                }
+            } catch (browserError) {
+                console.error('YouTube browser fallback failed:', browserError);
+            }
+        }
         resultStatus.innerHTML = `<span style="color: #ef4444">⚠ Error: ${error.message}</span>`;
     } finally {
         downloadBtn.disabled = false;
