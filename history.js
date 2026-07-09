@@ -1,6 +1,18 @@
-// ─── Save Media — History Module ────────────────────────────────────────────
-const HISTORY_KEY = 'saveMediaHistory';
+// ─── VideoSaver — History Module ────────────────────────────────────────────
+const HISTORY_KEY = 'videosaverHistory';
+const LEGACY_HISTORY_KEY = 'saveMediaHistory';
 const MAX_ITEMS   = 50;
+
+function migrateHistoryKey() {
+    if (localStorage.getItem(HISTORY_KEY)) {
+        return;
+    }
+    const legacy = localStorage.getItem(LEGACY_HISTORY_KEY);
+    if (legacy) {
+        localStorage.setItem(HISTORY_KEY, legacy);
+        localStorage.removeItem(LEGACY_HISTORY_KEY);
+    }
+}
 
 // ── Storage helpers ──────────────────────────────────────────────────────────
 
@@ -190,6 +202,7 @@ function escapeAttr(str) {
 // ── Init ─────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
+    migrateHistoryKey();
     // Render history on page load
     renderHistory();
 
