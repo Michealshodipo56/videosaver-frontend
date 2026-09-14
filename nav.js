@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
             nav.classList.toggle('open', isOpen);
             overlay.classList.toggle('show', isOpen);
             
-            const icon = mobileMenuBtn.querySelector('i');
+            const icon = mobileMenuBtn.querySelector('i, svg');
             if (isOpen) {
                 icon.setAttribute('data-lucide', 'x');
                 document.body.style.overflow = 'hidden'; // Prevent scrolling

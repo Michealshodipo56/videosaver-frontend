@@ -321,6 +321,21 @@ body {
   gap: 2.5rem;
 }
 
+#videoItemSelect {
+    width: calc(100% - 2rem);
+    margin: 1rem;
+    padding: 0.9rem 1rem;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 0.8rem;
+    font: inherit;
+}
+
+#videoItemSelect option {
+    color: #111827;
+}
+
 .video-preview {
   position: relative;
   border-radius: 1.5rem;

@@ -18,14 +18,15 @@ function migrateHistoryKey() {
 
 function getHistory() {
     try {
-        return JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
+        const items = JSON.parse(localStorage.getItem(HISTORY_KEY));
+        return Array.isArray(items) ? items.filter(item => item && typeof item === 'object').slice(0, MAX_ITEMS) : [];
     } catch {
         return [];
     }
 }
 
 function saveHistory(items) {
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(items));
+    try { localStorage.setItem(HISTORY_KEY, JSON.stringify(items)); } catch {}
 }
 
 /**
@@ -93,6 +94,7 @@ function platformIcon(platform) {
 function renderHistory() {
     const list    = document.getElementById('historyList');
     const empty   = document.getElementById('historyEmpty');
+    if (!list || !empty) return;
     const history = getHistory();
 
     list.innerHTML = '';
@@ -111,7 +113,7 @@ function renderHistory() {
         card.className = 'history-item glass';
         card.style.animationDelay = `${index * 0.05}s`;
 
-        const thumbSrc = item.thumbnail || '';
+        const thumbSrc = escapeHtml(item.thumbnail || 'images/cloud.svg');
         const platform = item.platform  || 'Video';
         const format   = item.format    || '—';
         const when     = item.downloaded_at ? timeAgo(item.downloaded_at) : '—';
@@ -138,15 +140,19 @@ function renderHistory() {
                 </div>
             </div>
             <div class="history-actions">
-                <button class="h-dl-btn" onclick="reDownload('${escapeAttr(item.download_url)}')">
+                <button class="h-dl-btn">
                     <i data-lucide="download"></i><span>Download Again</span>
                 </button>
-                <button class="h-del-btn" onclick="deleteHistoryItem('${escapeAttr(item.id)}')">
+                <button class="h-del-btn">
                     <i data-lucide="trash-2"></i>
                 </button>
             </div>
         `;
 
+        card.querySelector('.h-dl-btn').onclick = () => {
+            window.location.href = 'index.html?url=' + encodeURIComponent(item.url || '');
+        };
+        card.querySelector('.h-del-btn').onclick = () => deleteHistoryItem(item.id);
         list.appendChild(card);
     });
 

@@ -1,25 +1,44 @@
 const backendAttr = document.body.dataset.backendUrl ? document.body.dataset.backendUrl.trim() : '';
 // If hosted on the same server, use relative paths (empty string). Otherwise use the provided attribute.
-const BACKEND_URL = backendAttr; 
+const BACKEND_URL = ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname) ? 'http://localhost:10000' : backendAttr;
 
 let allOptions = [];
 let selectedKind = 'video';
 let selectedOption = null;
 let currentPlatform = '';
+let currentURL = '';
+let fetching = false;
+let currentItem = 0;
+
+function timeoutSignal(milliseconds) {
+    if (AbortSignal.timeout) return AbortSignal.timeout(milliseconds);
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), milliseconds);
+    return controller.signal;
+}
 
 function detectPlatform(url) {
-    url = url.toLowerCase();
-    if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube';
-    if (url.includes('instagram.com')) return 'instagram';
-    if (url.includes('facebook.com') || url.includes('fb.watch') || url.includes('fb.gg')) return 'facebook';
-    if (url.includes('tiktok.com')) return 'tiktok';
-    if (url.includes('twitter.com') || url.includes('x.com')) return 'x';
+    let parsed;
+    try { parsed = new URL(url); } catch { return null; }
+    if (!['http:', 'https:'].includes(parsed.protocol)) return null;
+    const host = parsed.hostname.toLowerCase().replace(/\.$/, '');
+    const hosts = {
+        youtube: ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'music.youtube.com', 'youtu.be'],
+        instagram: ['instagram.com', 'www.instagram.com', 'm.instagram.com'],
+        facebook: ['facebook.com', 'www.facebook.com', 'm.facebook.com', 'fb.watch', 'www.fb.watch'],
+        x: ['x.com', 'www.x.com', 'twitter.com', 'www.twitter.com', 'mobile.twitter.com']
+    };
+    for (const [platform, names] of Object.entries(hosts)) {
+        if (names.includes(host)) return platform;
+    }
+    if (host === 'tiktok.com' || host.endsWith('.tiktok.com')) return 'tiktok';
     return null;
 }
 
-lucide.createIcons();
+window.lucide?.createIcons();
 
 document.addEventListener('DOMContentLoaded', () => {
+    if (!window.gsap) return;
     gsap.from('[data-gsap="fade-down"]', {
         y: -30,
         opacity: 0,
@@ -116,7 +135,8 @@ document.getElementById('mainDownloadBtn').onclick = async () => {
     }
 
     const params = {
-        url: urlInput.value.trim(),
+        ...(currentItem ? { item: currentItem } : {}),
+        url: currentURL,
         kind: selectedOption.kind,
         format_id: selectedOption.format_id,
         title: title,
@@ -124,48 +144,78 @@ document.getElementById('mainDownloadBtn').onclick = async () => {
     };
     const downloadUrl = `${BACKEND_URL}/api/${currentPlatform}/download?` + new URLSearchParams(params).toString();
 
-    const link = document.createElement('a');
-    link.href = downloadUrl.toString();
-    link.click();
-    showToast('Download started');
-
-    addToHistory({
+    const button = document.getElementById('mainDownloadBtn');
+    const option = selectedOption;
+    const sourceURL = currentURL;
+    const thumbnail = document.getElementById('thumbnail').src;
+    button.disabled = true;
+    showToast('Preparing your download…');
+    try {
+        const response = await fetch(downloadUrl, { signal: timeoutSignal(960000) });
+        if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            throw new Error(data.error || `Download failed (HTTP ${response.status}). Please try again.`);
+        }
+        const blob = await response.blob();
+        if (!blob.size) throw new Error('The download was empty. Please try again.');
+        const objectURL = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = objectURL;
+        link.download = `${title.replace(/[^a-zA-Z0-9._-]+/g, '-').slice(0, 100) || 'video'}-${label}.${option.ext}`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(objectURL), 60000);
+        showToast('Download ready');
+        addToHistory({
         id: 'history_' + Date.now(),
         title,
-        thumbnail: document.getElementById('thumbnail').src,
+        thumbnail,
         platform,
-        url: urlInput.value.trim(),
-        format: `${selectedOption.ext.toUpperCase()} ${label}`,
+        url: sourceURL,
+        format: `${option.ext.toUpperCase()} ${label}`,
         download_url: downloadUrl.toString(),
         downloaded_at: new Date().toISOString()
-    });
+        });
+    } catch (error) {
+        showToast(['TimeoutError', 'AbortError'].includes(error.name) ? 'Download timed out. Please try a shorter video.' : error.message);
+    } finally {
+        button.disabled = false;
+    }
 };
 
 async function handleFetchMetadata() {
+    if (fetching) return;
     const url = urlInput.value.trim();
     if (!url) {
         showToast('Paste a video link first');
         return;
     }
 
-    currentPlatform = detectPlatform(url);
-    if (!currentPlatform) {
+    const platform = detectPlatform(url);
+    if (!platform) {
         showToast('Unsupported URL format. Paste a valid link (YouTube, Insta, FB, X, TikTok).');
         return;
     }
 
     downloadBtn.disabled = true;
+    fetching = true;
+    currentPlatform = platform;
+    currentURL = url;
+    selectedOption = null;
+    allOptions = [];
     resultsSection.style.display = 'block';
     resultStatus.style.display = 'flex';
+    resultStatus.textContent = 'Loading video details…';
     videoDetails.style.display = 'none';
 
-    gsap.fromTo(resultsSection,
+    window.gsap?.fromTo(resultsSection,
         { opacity: 0, y: 30 },
         { opacity: 1, y: 0, duration: 0.6, ease: 'back.out(1.7)' }
     );
 
     try {
-        const response = await fetch(`${BACKEND_URL}/api/${currentPlatform}/metadata?url=${encodeURIComponent(url)}`);
+        const response = await fetch(`${BACKEND_URL}/api/${currentPlatform}/metadata?url=${encodeURIComponent(url)}`, { signal: timeoutSignal(120000) });
 
         // Guard: check if response is JSON before parsing
         const contentType = response.headers.get('content-type') || '';
@@ -183,9 +233,21 @@ async function handleFetchMetadata() {
             throw new Error(data.error || 'Failed to inspect video');
         }
 
-        populateVideoInfo(data);
-        allOptions = data.options || [];
-        setupSelects();
+        document.getElementById('videoItemSelect')?.remove();
+        if (Array.isArray(data.items) && data.items.length > 1) {
+            const select = document.createElement('select');
+            select.id = 'videoItemSelect';
+            select.setAttribute('aria-label', 'Choose video in this post');
+            data.items.forEach((item, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = `Video ${index + 1}: ${item.title || 'Untitled'}`;
+                select.appendChild(option);
+            });
+            select.onchange = () => displayVideo(data.items[Number(select.value)]);
+            videoDetails.before(select);
+        }
+        displayVideo(data);
     } catch (error) {
         if (currentPlatform === 'youtube') {
             try {
@@ -193,9 +255,7 @@ async function handleFetchMetadata() {
                 if (isYouTubeBrowserFallbackEnabled()) {
                     resultStatus.innerHTML = '<span>Server blocked — trying browser extraction...</span>';
                     const data = await fetchYouTubeMetadataInBrowser(url);
-                    populateVideoInfo(data);
-                    allOptions = data.options || [];
-                    setupSelects();
+                    displayVideo(data);
                     showToast('Loaded via browser extraction');
                     return;
                 }
@@ -203,10 +263,21 @@ async function handleFetchMetadata() {
                 console.error('YouTube browser fallback failed:', browserError);
             }
         }
-        resultStatus.innerHTML = `<span style="color: #ef4444">⚠ Error: ${error.message}</span>`;
+        const msg = document.createElement('span');
+        msg.style.color = '#ef4444';
+        msg.textContent = `⚠ Error: ${error.message}`;
+        resultStatus.replaceChildren(msg);
     } finally {
         downloadBtn.disabled = false;
+        fetching = false;
     }
+}
+
+function displayVideo(data) {
+    currentItem = data.item || 0;
+    populateVideoInfo(data);
+    allOptions = Array.isArray(data.options) ? data.options : [];
+    setupSelects();
 }
 
 function populateVideoInfo(data) {
@@ -218,14 +289,15 @@ function populateVideoInfo(data) {
     // Capitalize platform name for badge
     const badgeText = currentPlatform.charAt(0).toUpperCase() + currentPlatform.slice(1);
     document.getElementById('platformBadge').textContent = data.platform || (badgeText === 'X' ? 'Twitter/X' : badgeText);
-    document.getElementById('videoDuration').innerHTML = `<i data-lucide="clock"></i> Duration: ${data.duration || 'N/A'}`;
+    document.getElementById('videoDuration').textContent = `Duration: ${data.duration || 'N/A'}`;
 
     const thumb = document.getElementById('thumbnail');
+    thumb.onerror = () => { thumb.onerror = null; thumb.src = 'images/cloud.svg'; };
     thumb.src = data.thumbnail
         ? `${BACKEND_URL}/api/thumbnail?url=${encodeURIComponent(data.thumbnail)}`
         : 'images/cloud.svg';
 
-    lucide.createIcons();
+    window.lucide?.createIcons();
 }
 
 function setupSelects() {
@@ -237,7 +309,7 @@ function setupSelects() {
         { kind: 'audio', label: 'MP3 Audio' }
     ];
 
-    choices.forEach((choice) => {
+    choices.filter(choice => allOptions.some(option => option.kind === choice.kind)).forEach((choice) => {
         const item = document.createElement('div');
         item.textContent = choice.label;
         item.onclick = (e) => {
@@ -331,3 +403,13 @@ if (reportForm) {
         }
     });
 }
+
+const restoredURL = new URLSearchParams(window.location.search).get('url');
+if (restoredURL) {
+    urlInput.value = restoredURL;
+    handleFetchMetadata();
+}
+document.querySelectorAll('.platform-item').forEach(link => {
+    link.href = '#urlInput';
+    link.addEventListener('click', () => urlInput.focus());
+});

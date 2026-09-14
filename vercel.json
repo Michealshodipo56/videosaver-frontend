@@ -1,9 +1,9 @@
 {
   "rewrites": [
-    { "source": "/facebook", "destination": "/facebook.html" },
-    { "source": "/instagram", "destination": "/instagram.html" },
-    { "source": "/tiktok", "destination": "/tiktok.html" },
-    { "source": "/x", "destination": "/x.html" },
+    { "source": "/facebook", "destination": "/index.html" },
+    { "source": "/instagram", "destination": "/index.html" },
+    { "source": "/tiktok", "destination": "/index.html" },
+    { "source": "/x", "destination": "/index.html" },
     { "source": "/history", "destination": "/history.html" }
   ]
 }
