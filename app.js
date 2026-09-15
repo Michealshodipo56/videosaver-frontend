@@ -17,6 +17,19 @@ function timeoutSignal(milliseconds) {
     return controller.signal;
 }
 
+function startDirectDownload(option, title) {
+    const extension = option.ext || 'mp4';
+    const safeTitle = title.replace(/[<>:"/\\|?*]+/g, '_').trim() || 'video';
+    const link = document.createElement('a');
+    link.href = option.direct_url;
+    link.setAttribute('download', `${safeTitle}.${extension}`);
+    link.target = '_blank';
+    link.rel = 'noopener';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+}
+
 function detectPlatform(url) {
     let parsed;
     try { parsed = new URL(url); } catch { return null; }
@@ -109,16 +122,7 @@ document.getElementById('mainDownloadBtn').onclick = async () => {
     const label = document.querySelector('#qualitySelect .selected-value').textContent;
 
     if (selectedOption.direct_url) {
-        const ext = selectedOption.ext || (selectedKind === 'audio' ? 'mp3' : 'mp4');
-        const safeTitle = title.replace(/[<>:"/\\|?*]+/g, '_').trim() || 'video';
-        const link = document.createElement('a');
-        link.href = selectedOption.direct_url;
-        link.setAttribute('download', `${safeTitle}.${ext}`);
-        link.target = '_blank';
-        link.rel = 'noopener';
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
+        startDirectDownload(selectedOption, title);
         showToast('Download started');
 
         addToHistory({
@@ -178,6 +182,30 @@ document.getElementById('mainDownloadBtn').onclick = async () => {
         downloaded_at: new Date().toISOString()
         });
     } catch (error) {
+        if (currentPlatform === 'youtube' && option.kind === 'video') {
+            try {
+                const { fetchYouTubeMetadataInBrowser, isYouTubeBrowserFallbackEnabled } = await import('./youtube-browser.js');
+                if (isYouTubeBrowserFallbackEnabled()) {
+                    showToast('Server blocked — switching to browser download…');
+                    const browserData = await fetchYouTubeMetadataInBrowser(sourceURL);
+                    const browserVideos = browserData.options.filter(candidate => candidate.kind === 'video' && candidate.direct_url);
+                    const fallback = browserVideos.find(candidate => candidate.height === option.height) || browserVideos[0];
+                    if (fallback) {
+                        startDirectDownload(fallback, title);
+                        showToast('Download started');
+                        addToHistory({
+                            id: 'history_' + Date.now(), title, thumbnail, platform, url: sourceURL,
+                            format: `${fallback.ext.toUpperCase()} ${fallback.label}`,
+                            download_url: fallback.direct_url,
+                            downloaded_at: new Date().toISOString()
+                        });
+                        return;
+                    }
+                }
+            } catch (browserError) {
+                console.error('YouTube browser download fallback failed:', browserError);
+            }
+        }
         showToast(['TimeoutError', 'AbortError'].includes(error.name) ? 'Download timed out. Please try a shorter video.' : error.message);
     } finally {
         button.disabled = false;

@@ -83,7 +83,7 @@ function buildOptions(formats) {
     const groups = new Map();
 
     formats.forEach((format) => {
-        if (!format.has_video || !format.direct_url) {
+        if (!format.has_video || !format.has_audio || !format.direct_url) {
             return;
         }
         const height = format.height || 0;
@@ -108,18 +108,6 @@ function buildOptions(formats) {
         .sort((a, b) => b[0] - a[0])
         .map(([, option]) => option);
 
-    const bestAudio = formats
-        .filter((format) => format.has_audio && !format.has_video && format.direct_url)
-        .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
-
-    options.push({
-        kind: 'audio',
-        label: 'Best audio (MP3)',
-        format_id: bestAudio?.format_id || 'audio',
-        ext: 'mp3',
-        direct_url: bestAudio?.direct_url || ''
-    });
-
     return options;
 }
 
@@ -140,13 +128,17 @@ export async function fetchYouTubeMetadataInBrowser(mediaURL) {
         try {
             const info = await yt.getBasicInfo(videoId, client);
             const streaming = info.streaming_data;
-            if (!streaming?.adaptive_formats?.length) {
+            const availableFormats = [
+                ...(streaming?.formats || []),
+                ...(streaming?.adaptive_formats || [])
+            ];
+            if (!availableFormats.length) {
                 throw new Error('no streaming data');
             }
 
             const formats = [];
             const seen = new Set();
-            for (const fmt of streaming.adaptive_formats) {
+            for (const fmt of availableFormats) {
                 if (!fmt.has_video && !fmt.has_audio) {
                     continue;
                 }
