@@ -102,6 +102,7 @@ function renderHistory() {
     if (history.length === 0) {
         empty.style.display = 'flex';
         list.style.display  = 'none';
+        window.lucide?.createIcons();
         return;
     }
 
@@ -207,16 +208,21 @@ function escapeAttr(str) {
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 
+window.addToHistory = addToHistory;
+
 document.addEventListener('DOMContentLoaded', () => {
     migrateHistoryKey();
-    // Render history on page load
+
+    // history.js is also loaded on the homepage for addToHistory().
+    // Skip page-specific setup and intro animations there so GSAP
+    // does not run twice and leave the UI stuck at opacity 0.
+    if (!document.getElementById('historyList')) return;
+
     renderHistory();
 
-    // Clear History button
     const clearBtn = document.getElementById('clearHistoryBtn');
     if (clearBtn) clearBtn.addEventListener('click', openClearModal);
 
-    // Modal buttons
     const confirmBtn = document.getElementById('modalConfirm');
     const cancelBtn  = document.getElementById('modalCancel');
     if (confirmBtn) confirmBtn.addEventListener('click', () => {
@@ -226,15 +232,27 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     if (cancelBtn) cancelBtn.addEventListener('click', closeClearModal);
 
-    // Close modal on backdrop click
     const modal = document.getElementById('clearModal');
     if (modal) modal.addEventListener('click', (e) => {
         if (e.target === modal) closeClearModal();
     });
 
-    // Animate header
-    if (typeof gsap !== 'undefined') {
-        gsap.from('[data-gsap="fade-down"]', { y: -30, opacity: 0, duration: 0.8, ease: 'power3.out' });
-        gsap.from('[data-gsap="fade-up"]',   { y: 40,  opacity: 0, duration: 1,   delay: 0.2, ease: 'power4.out' });
-    }
+    playIntroAnimations();
 });
+
+function playIntroAnimations() {
+    const fadeDown = document.querySelectorAll('[data-gsap="fade-down"]');
+    const fadeUp = document.querySelectorAll('[data-gsap="fade-up"]');
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (!window.gsap || reduceMotion) return;
+
+    gsap.fromTo(fadeDown,
+        { y: -30, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.8, ease: 'power3.out', overwrite: true }
+    );
+    gsap.fromTo(fadeUp,
+        { y: 40, opacity: 0 },
+        { y: 0, opacity: 1, duration: 1, delay: 0.15, ease: 'power4.out', overwrite: true }
+    );
+}
