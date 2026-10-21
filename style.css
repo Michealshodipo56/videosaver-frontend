@@ -171,10 +171,12 @@ body {
   font-weight: 800;
   line-height: 1.1;
   margin-bottom: 1.5rem;
+  color: #ffffff;
 }
 
 .gradient-text {
-  background: linear-gradient(90deg, var(--primary), var(--accent));
+  color: var(--accent);
+  background: linear-gradient(90deg, #818cf8, #c084fc);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -196,10 +198,10 @@ body {
 }
 
 .search-box {
-  background: var(--card-bg);
+  background: rgba(15, 23, 42, 0.85);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--glass-border);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   padding: 0.5rem 0.5rem 0.5rem 1.5rem;
   border-radius: 100px;
   display: flex;
@@ -572,12 +574,16 @@ body {
   line-height: 1.6;
 }
 
+.platforms-section {
+  padding: 2rem 0 1rem;
+}
+
 .platforms-flex {
   display: flex;
   justify-content: center;
   flex-wrap: wrap;
   gap: 3rem;
-  opacity: 0.6;
+  opacity: 0.9;
 }
 
 .platform-item {
@@ -1260,4 +1266,11 @@ body {
 .toast.show {
   transform: translateX(-50%) translateY(0);
   opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-gsap] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }
