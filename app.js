@@ -51,22 +51,28 @@ function detectPlatform(url) {
 window.lucide?.createIcons();
 
 document.addEventListener('DOMContentLoaded', () => {
-    if (!window.gsap) return;
-    gsap.from('[data-gsap="fade-down"]', {
-        y: -30,
-        opacity: 0,
-        duration: 0.8,
-        ease: 'power3.out'
-    });
+    const fadeDown = document.querySelectorAll('[data-gsap="fade-down"]');
+    const fadeUp = document.querySelectorAll('[data-gsap="fade-up"]');
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    gsap.from('[data-gsap="fade-up"]', {
-        y: 40,
-        opacity: 0,
-        duration: 1,
-        delay: 0.2,
-        stagger: 0.2,
-        ease: 'power4.out'
-    });
+    // Use fromTo with an explicit end state. gsap.from() records the
+    // current opacity as the destination — a second call (or a race)
+    // can freeze the page at opacity 0, which is what made the homepage
+    // look like an empty dark screen.
+    if (!window.gsap || reduceMotion) {
+        fadeDown.forEach((el) => { el.style.opacity = '1'; el.style.transform = 'none'; });
+        fadeUp.forEach((el) => { el.style.opacity = '1'; el.style.transform = 'none'; });
+        return;
+    }
+
+    gsap.fromTo(fadeDown,
+        { y: -30, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.8, ease: 'power3.out', overwrite: true }
+    );
+    gsap.fromTo(fadeUp,
+        { y: 40, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.9, delay: 0.12, stagger: 0.12, ease: 'power4.out', overwrite: true }
+    );
 });
 
 const urlInput = document.getElementById('urlInput');
@@ -125,7 +131,7 @@ document.getElementById('mainDownloadBtn').onclick = async () => {
         startDirectDownload(selectedOption, title);
         showToast('Download started');
 
-        addToHistory({
+        window.addToHistory?.({
             id: 'history_' + Date.now(),
             title,
             thumbnail: document.getElementById('thumbnail').src,
@@ -171,7 +177,7 @@ document.getElementById('mainDownloadBtn').onclick = async () => {
         link.remove();
         setTimeout(() => URL.revokeObjectURL(objectURL), 60000);
         showToast('Download ready');
-        addToHistory({
+        window.addToHistory?.({
         id: 'history_' + Date.now(),
         title,
         thumbnail,
@@ -193,7 +199,7 @@ document.getElementById('mainDownloadBtn').onclick = async () => {
                     if (fallback) {
                         startDirectDownload(fallback, title);
                         showToast('Download started');
-                        addToHistory({
+                        window.addToHistory?.({
                             id: 'history_' + Date.now(), title, thumbnail, platform, url: sourceURL,
                             format: `${fallback.ext.toUpperCase()} ${fallback.label}`,
                             download_url: fallback.direct_url,
